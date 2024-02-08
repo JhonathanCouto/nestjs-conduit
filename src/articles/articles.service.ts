@@ -14,7 +14,8 @@ import {
   paginate,
 } from 'nestjs-typeorm-paginate';
 import { NullableType } from 'src/common/types/nullable.type';
-import * as slug from 'slug';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const slug = require('slug');
 
 @Injectable()
 export class ArticlesService {
@@ -42,23 +43,22 @@ export class ArticlesService {
       throw new ConflictException('Article already exists');
     }
 
-    return this.articleRepository.save(
-      this.articleRepository.create({
-        ...createArticleDto,
-        slug: this.slugify(createArticleDto.title),
-        author: user,
-      }),
-    );
-  }
+    const newArticle = this.articleRepository.create({
+      ...createArticleDto,
+      slug: this.slugify(createArticleDto.title),
+      author: user,
+    });
 
-  findAll(): Promise<Article[]> {
-    return this.articleRepository.find();
+    return this.articleRepository.save(newArticle);
   }
 
   async paginate(options: IPaginationOptions): Promise<Pagination<Article>> {
-    return paginate<Article>(this.articleRepository, options, {
-      relations: ['author'],
-    });
+    const queryBuilder = this.articleRepository
+      .createQueryBuilder('article')
+      .leftJoinAndSelect('article.author', 'author')
+      .orderBy('article.createdAt', 'DESC');
+
+    return paginate<Article>(queryBuilder, options);
   }
 
   findOne(fields: FindOptionsWhere<Article>): Promise<NullableType<Article>> {
@@ -73,6 +73,60 @@ export class ArticlesService {
 
   remove(id: number) {
     return this.articleRepository.delete(id);
+  }
+
+  async favorite(userId: number, slug: string): Promise<Article> {
+    const user = await this.usersService.findOne({ id: userId });
+    const article = await this.articleRepository.findOne({
+      where: { slug },
+      relations: ['author'],
+    });
+
+    if (!user || !article) {
+      throw new NotFoundException('User or article not found');
+    }
+
+    const isNewFavorite = !user.favorites?.some(
+      (favorite) => favorite.id === article.id,
+    );
+
+    if (isNewFavorite) {
+      user.favorites = [...(user.favorites || []), article];
+      article.favoriteCount++;
+      await Promise.all([
+        this.usersService.update(user.id, user),
+        this.articleRepository.save(article),
+      ]);
+    }
+
+    return article;
+  }
+
+  async unfavorite(userId: number, slug: string): Promise<Article> {
+    const article = await this.articleRepository.findOne({ where: { slug } });
+
+    if (!article) {
+      throw new NotFoundException('Article not found');
+    }
+
+    const user = await this.usersService.findOne({ id: userId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const deleteIndex = user.favorites.findIndex(
+      (article) => article.id === article.id,
+    );
+
+    if (deleteIndex >= 0) {
+      user.favorites.splice(deleteIndex, 1);
+      article.favoriteCount--;
+      await this.usersService.update(user.id, user);
+      await this.articleRepository.save(article);
+    }
+
+    return article;
   }
 
   private slugify(title: string) {

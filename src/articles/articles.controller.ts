@@ -17,7 +17,7 @@ import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Pagination } from 'nestjs-typeorm-paginate';
 import { Article } from './entities/article.entity';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Articles')
@@ -32,11 +32,18 @@ export class ArticlesController {
     return this.articlesService.create(request.user.id, createArticleDto);
   }
 
-  @Get()
-  findAll() {
-    return this.articlesService.findAll();
-  }
-
+  @ApiQuery({
+    name: 'page',
+    type: Number,
+    required: false,
+    description: 'Page number',
+  })
+  @ApiQuery({
+    name: 'limit',
+    type: Number,
+    required: false,
+    description: 'Number of items per page',
+  })
   @Get('')
   async index(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
@@ -62,5 +69,19 @@ export class ArticlesController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.articlesService.remove(+id);
+  }
+
+  @Post(':slug/favorite')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  favorite(@Request() request, @Param('slug') slug: string) {
+    return this.articlesService.favorite(request.user.id, slug);
+  }
+
+  @Delete(':slug/favorite')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  unfavorite(@Request() request, @Param('id') slug: string) {
+    return this.articlesService.unfavorite(request.user.id, slug);
   }
 }

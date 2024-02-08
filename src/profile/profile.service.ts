@@ -1,17 +1,15 @@
-import { UsersService } from './../users/users.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ProfileResponseType } from './types/profile-response.type';
 import { NullableType } from 'src/common/types/nullable.type';
-import { plainToClass } from 'class-transformer';
-import { ProfileResponseDto } from './dto/profile-response.dto';
+
+import { UsersService } from './../users/users.service';
+import { ProfileResponseType } from './types/profile-response.type';
 
 @Injectable()
 export class ProfileService {
   constructor(private readonly usersService: UsersService) {}
 
-  async findOne(username: string): Promise<NullableType<ProfileResponseDto>> {
-    const user = await this.usersService.findOne({ username });
-    return user ? plainToClass(ProfileResponseDto, user) : null;
+  async findOne(username: string): Promise<NullableType<ProfileResponseType>> {
+    return await this.usersService.findOne({ username });
   }
 
   async follow(

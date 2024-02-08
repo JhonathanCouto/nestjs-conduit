@@ -38,6 +38,6 @@ export class Article extends EntityHelper {
   @ManyToOne(() => User, (author) => author.articles)
   author: User;
 
-  @ManyToOne(() => User, (favoritedBy) => favoritedBy.favorites)
-  favoritedBy: User;
+  @Column({ default: 0 })
+  favoriteCount: number;
 }

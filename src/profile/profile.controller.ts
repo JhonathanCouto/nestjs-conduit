@@ -1,28 +1,20 @@
-import { ProfileService } from './profile.service';
-import {
-  ClassSerializerInterceptor,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  UseInterceptors,
-} from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
-import { ProfileResponseType } from './types/profile-response.type';
+import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { NullableType } from 'src/common/types/nullable.type';
-import { ProfileResponseDto } from './dto/profile-response.dto';
+
+import { ProfileService } from './profile.service';
+import { ProfileResponseType } from './types/profile-response.type';
 
 @ApiTags('Profile')
 @Controller('profile')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}
 
+  @ApiParam({ name: 'username', type: String, example: 'John Doe' })
   @Get(':username')
-  @UseInterceptors(ClassSerializerInterceptor)
   findOne(
     @Param('username') username: string,
-  ): Promise<NullableType<ProfileResponseDto>> {
+  ): Promise<NullableType<ProfileResponseType>> {
     return this.profileService.findOne(username);
   }
 

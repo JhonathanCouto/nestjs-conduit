@@ -57,7 +57,8 @@ export class User extends EntityHelper {
   @OneToMany(() => Article, (article) => article.author)
   articles: Article[];
 
-  @OneToMany(() => Article, (article) => article.favoritedBy)
+  @ManyToMany(() => Article)
+  @JoinTable()
   favorites: Article[];
 
   @ManyToMany(() => User, (user) => user.followers)
