@@ -1,26 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCommentDto } from './dto/create-comment.dto';
-import { UpdateCommentDto } from './dto/update-comment.dto';
+
+import { Comment } from './entities/comment.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
+import { NullableType } from 'src/common/types/nullable.type';
 
 @Injectable()
 export class CommentsService {
-  create(createCommentDto: CreateCommentDto) {
-    return 'This action adds a new comment';
+  constructor(
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
+  ) {}
+
+  async create(body: string): Promise<Comment> {
+    return await this.commentRepository.save(
+      this.commentRepository.create({ body }),
+    );
   }
 
-  findAll() {
-    return `This action returns all comments`;
+  async findOne(
+    options: FindOptionsWhere<Comment>,
+  ): Promise<NullableType<Comment>> {
+    return await this.commentRepository.findOne({ where: options });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} comment`;
-  }
-
-  update(id: number, updateCommentDto: UpdateCommentDto) {
-    return `This action updates a #${id} comment`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} comment`;
+  async remove(id: number): Promise<void> {
+    await this.commentRepository.delete(id);
   }
 }

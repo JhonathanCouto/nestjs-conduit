@@ -17,8 +17,14 @@ import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Pagination } from 'nestjs-typeorm-paginate';
 import { Article } from './entities/article.entity';
-import { ApiBearerAuth, ApiTags, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiQuery,
+  ApiOperation,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { CreateCommentDto } from './dto/create-comment.dto';
 
 @ApiTags('Articles')
 @Controller('articles')
@@ -44,6 +50,7 @@ export class ArticlesController {
     required: false,
     description: 'Number of items per page',
   })
+  @ApiOperation({ summary: 'Get all articles' })
   @Get('')
   async index(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
@@ -83,5 +90,27 @@ export class ArticlesController {
   @UseGuards(AuthGuard('jwt'))
   unfavorite(@Request() request, @Param('id') slug: string) {
     return this.articlesService.unfavorite(request.user.id, slug);
+  }
+
+  @Get(':slug/comments')
+  async findComments(@Param('slug') slug: string) {
+    return this.articlesService.findComments(slug);
+  }
+
+  @Post(':slug/comments')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async createComment(
+    @Param('slug') slug: string,
+    @Body() dto: CreateCommentDto,
+  ) {
+    return this.articlesService.createComment(slug, dto);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Delete(':slug/comments/:id')
+  async deleteComment(@Param('slug') slug: string, @Param('id') id: number) {
+    return this.articlesService.deleteComment(slug, id);
   }
 }

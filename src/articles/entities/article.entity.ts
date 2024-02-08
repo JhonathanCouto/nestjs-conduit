@@ -1,10 +1,13 @@
+import { Comment } from 'src/comments/entities/comment.entity';
 import { EntityHelper } from 'src/common/entity-helper';
 import { User } from 'src/users/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -28,6 +31,10 @@ export class Article extends EntityHelper {
 
   @Column('simple-array')
   tagList: string[];
+
+  @OneToMany(() => Comment, (comment) => comment.article, { eager: true })
+  @JoinColumn()
+  comments: Comment[];
 
   @CreateDateColumn()
   createdAt: Date;
