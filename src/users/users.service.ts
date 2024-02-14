@@ -21,8 +21,8 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  findOne(fields: FindOptionsWhere<User>): Promise<User | null> {
-    return this.usersRepository.findOne({ where: fields });
+  async findOne(fields: FindOptionsWhere<User>): Promise<User | null> {
+    return await this.usersRepository.findOne({ where: fields });
   }
 
   async update(id: number, payload: DeepPartial<User>): Promise<User> {

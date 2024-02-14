@@ -12,7 +12,7 @@ export class TagsController {
 
   @Post()
   create(@Body() createTagDto: CreateTagDto) {
-    return this.tagsService.create(createTagDto);
+    return this.tagsService.create({ name: createTagDto.name });
   }
 
   @Get()

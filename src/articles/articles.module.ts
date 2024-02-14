@@ -5,9 +5,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Article } from './entities/article.entity';
 import { UsersModule } from 'src/users/users.module';
 import { CommentsModule } from 'src/comments/comments.module';
+import { TagsModule } from 'src/tags/tags.module';
+import { FavoritesModule } from 'src/favorites/favorites.module';
+import { FollowersModule } from 'src/followers/followers.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Article]), UsersModule, CommentsModule],
+  imports: [
+    TypeOrmModule.forFeature([Article]),
+    FollowersModule,
+    UsersModule,
+    CommentsModule,
+    TagsModule,
+    FavoritesModule,
+  ],
   controllers: [ArticlesController],
   providers: [ArticlesService],
 })

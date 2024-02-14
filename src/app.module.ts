@@ -11,6 +11,8 @@ import databaseConfig from './database/config/database.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TypeOrmConfigService } from './database/typeorm-config.service';
 import { DataSource, DataSourceOptions } from 'typeorm';
+import { FollowersModule } from './followers/followers.module';
+import { FavoritesModule } from './favorites/favorites.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { DataSource, DataSourceOptions } from 'typeorm';
     TagsModule,
     ProfileModule,
     AuthModule,
+    FollowersModule,
+    FavoritesModule,
   ],
   controllers: [],
   providers: [],

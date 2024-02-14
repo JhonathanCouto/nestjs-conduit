@@ -1,6 +1,5 @@
 import { Exclude } from 'class-transformer';
 import { Article } from 'src/articles/entities/article.entity';
-import { EntityHelper } from 'src/common/entity-helper';
 import {
   AfterLoad,
   BeforeInsert,
@@ -8,16 +7,17 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinTable,
-  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Comment } from 'src/comments/entities/comment.entity';
+import { Follower } from 'src/followers/entities/follower.entity';
+import { Favorite } from 'src/favorites/entities/favorite.entity';
 
 @Entity()
-export class User extends EntityHelper {
+export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -57,16 +57,17 @@ export class User extends EntityHelper {
   @OneToMany(() => Article, (article) => article.author)
   articles: Article[];
 
-  @ManyToMany(() => Article)
-  @JoinTable()
-  favorites: Article[];
+  @OneToMany(() => Favorite, (favorite) => favorite.user)
+  favorites: Favorite[];
 
-  @ManyToMany(() => User, (user) => user.followers)
-  @JoinTable()
-  followers: User[];
+  @OneToMany(() => Follower, (follower) => follower.follower)
+  followers: Follower[];
 
-  @ManyToMany(() => User, (user) => user.following)
-  following: User[];
+  @OneToMany(() => Follower, (follower) => follower.following)
+  following: Follower[];
+
+  @OneToMany(() => Comment, (comment) => comment.author)
+  comments: Comment[];
 
   @CreateDateColumn()
   createdAt: Date;

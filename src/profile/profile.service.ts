@@ -23,9 +23,6 @@ export class ProfileService {
       throw new NotFoundException('User not found');
     }
 
-    follower.following.push(userToFollow);
-    userToFollow.followers.push(follower);
-
     await this.usersService.update(followerId, {
       following: follower.following,
     });

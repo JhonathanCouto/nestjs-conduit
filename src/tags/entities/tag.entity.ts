@@ -1,13 +1,16 @@
 import { Exclude } from 'class-transformer';
-import { EntityHelper } from 'src/common/entity-helper';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Article } from 'src/articles/entities/article.entity';
+import { Column, Entity, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
-export class Tag extends EntityHelper {
+export class Tag {
   @PrimaryGeneratedColumn()
   @Exclude({ toPlainOnly: true })
   id: number;
 
-  @Column()
-  tag: string;
+  @Column({ unique: true })
+  name: string;
+
+  @ManyToMany(() => Article, (article) => article.tags)
+  article: Article[];
 }

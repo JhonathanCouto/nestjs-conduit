@@ -7,8 +7,6 @@ import {
   Param,
   Delete,
   Query,
-  DefaultValuePipe,
-  ParseIntPipe,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -17,14 +15,10 @@ import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { Pagination } from 'nestjs-typeorm-paginate';
 import { Article } from './entities/article.entity';
-import {
-  ApiBearerAuth,
-  ApiTags,
-  ApiQuery,
-  ApiOperation,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { QueryArticleDto } from './dto/query-article.dto';
 
 @ApiTags('Articles')
 @Controller('articles')
@@ -35,29 +29,17 @@ export class ArticlesController {
   @UseGuards(AuthGuard('jwt'))
   @Post()
   create(@Request() request, @Body() createArticleDto: CreateArticleDto) {
-    return this.articlesService.create(request.user.id, createArticleDto);
+    return this.articlesService.create(request.user.sub, createArticleDto);
   }
 
-  @ApiQuery({
-    name: 'page',
-    type: Number,
-    required: false,
-    description: 'Page number',
-  })
-  @ApiQuery({
-    name: 'limit',
-    type: Number,
-    required: false,
-    description: 'Number of items per page',
-  })
   @ApiOperation({ summary: 'Get all articles' })
   @Get('')
-  async index(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number = 10,
+  async findArticles(
+    @Query() query: QueryArticleDto,
   ): Promise<Pagination<Article>> {
-    limit = limit > 100 ? 100 : limit;
-    return this.articlesService.paginate({
+    const page = query?.page ?? 1;
+    const limit = query?.limit > 100 ? 100 : query?.limit;
+    return this.articlesService.findArticles(query, {
       page,
       limit,
     });
@@ -82,14 +64,14 @@ export class ArticlesController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   favorite(@Request() request, @Param('slug') slug: string) {
-    return this.articlesService.favorite(request.user.id, slug);
+    return this.articlesService.favorite(request.user.sub, slug);
   }
 
   @Delete(':slug/favorite')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   unfavorite(@Request() request, @Param('id') slug: string) {
-    return this.articlesService.unfavorite(request.user.id, slug);
+    return this.articlesService.unfavorite(request.user.sub, slug);
   }
 
   @Get(':slug/comments')

@@ -6,7 +6,7 @@ import {
 import { CreateArticleDto } from './dto/create-article.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Article } from './entities/article.entity';
-import { DeepPartial, FindOptionsWhere, Repository } from 'typeorm';
+import { DeepPartial, FindOptionsWhere, In, Repository } from 'typeorm';
 import { UsersService } from 'src/users/users.service';
 import {
   IPaginationOptions,
@@ -16,6 +16,11 @@ import {
 import { NullableType } from 'src/common/types/nullable.type';
 import { CommentsService } from 'src/comments/comments.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { Tag } from 'src/tags/entities/tag.entity';
+import { TagsService } from 'src/tags/tags.service';
+import { FavoritesService } from 'src/favorites/favorites.service';
+import { QueryArticleDto } from './dto/query-article.dto';
+import { FollowersService } from 'src/followers/followers.service';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const slug = require('slug');
 
@@ -24,8 +29,11 @@ export class ArticlesService {
   constructor(
     @InjectRepository(Article)
     private articleRepository: Repository<Article>,
+    private readonly tagsService: TagsService,
+    private readonly favoritesService: FavoritesService,
     private readonly usersService: UsersService,
     private readonly commentsService: CommentsService,
+    private readonly followersService: FollowersService,
   ) {}
 
   async create(
@@ -46,13 +54,107 @@ export class ArticlesService {
       throw new ConflictException('Article already exists');
     }
 
+    const tags: Tag[] = [];
+
+    if (createArticleDto.tagList) {
+      const tagEntities = await this.tagsService.findAllByOptions({
+        name: In(createArticleDto.tagList),
+      });
+
+      const existingTagNames = tagEntities.map((tag) => tag.name);
+      const newTagNames = createArticleDto.tagList.filter(
+        (name) => !existingTagNames.includes(name),
+      );
+
+      const newTags = await Promise.all(
+        newTagNames.map((name) => this.tagsService.findOrCreate(name)),
+      );
+
+      tags.push(...tagEntities, ...newTags);
+    }
+
     const newArticle = this.articleRepository.create({
       ...createArticleDto,
+      tags,
       slug: this.slugify(createArticleDto.title),
       author: user,
     });
 
     return this.articleRepository.save(newArticle);
+  }
+
+  async findArticles(
+    query: QueryArticleDto,
+    options: IPaginationOptions,
+  ): Promise<Pagination<Article>> {
+    const queryBuilder = this.articleRepository
+      .createQueryBuilder('article')
+      .leftJoinAndSelect('article.author', 'author')
+      .leftJoinAndSelect('article.tags', 'tag')
+      .leftJoinAndSelect('article.favorites', 'favorite');
+
+    if (query.tag) {
+      queryBuilder.andWhere('tag.name = :tag', {
+        tag: `%${query.tag}%`,
+      });
+    }
+
+    if (query.author) {
+      const author = await this.usersService.findOne({
+        username: query.author,
+      });
+
+      if (author) {
+        queryBuilder.andWhere('author.id = :id', { id: author.id });
+      }
+    }
+
+    if (query.favoritedBy) {
+      queryBuilder.innerJoin(
+        'article.favorites',
+        'favorite',
+        'favorite.user.username = :favoritedBy',
+        { favoritedBy: query.favoritedBy },
+      );
+    }
+
+    queryBuilder.orderBy('article.createdAt', 'DESC');
+
+    return paginate<Article>(queryBuilder, options);
+  }
+
+  async findFeedArticles(
+    userId: number,
+    options: IPaginationOptions,
+  ): Promise<Pagination<Article>> {
+    const user = await this.usersService.findOne({ id: userId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const following = await this.followersService.findByFollowing(user);
+
+    if (following.length === 0) {
+      return new Pagination<Article>([], {
+        totalItems: 0,
+        itemCount: 0,
+        itemsPerPage: 0,
+        currentPage: 0,
+      });
+    }
+
+    const queryBuilder = this.articleRepository
+      .createQueryBuilder('article')
+      .leftJoinAndSelect('article.author', 'author')
+      .leftJoinAndSelect('article.favorites', 'favorite')
+      .leftJoinAndSelect('article.tags', 'tag')
+      .where('author.id IN (:...ids)', {
+        ids: following.map((user) => user.id),
+      })
+      .orderBy('article.createdAt', 'DESC');
+
+    return paginate<Article>(queryBuilder, options);
   }
 
   async paginate(options: IPaginationOptions): Promise<Pagination<Article>> {
@@ -79,27 +181,28 @@ export class ArticlesService {
   }
 
   async favorite(userId: number, slug: string): Promise<Article> {
-    const user = await this.usersService.findOne({ id: userId });
     const article = await this.articleRepository.findOne({
       where: { slug },
-      relations: ['author'],
     });
 
-    if (!user || !article) {
-      throw new NotFoundException('User or article not found');
+    if (!article) {
+      throw new NotFoundException('Article not found');
     }
 
-    const isNewFavorite = !user.favorites?.some(
-      (favorite) => favorite.id === article.id,
-    );
+    const user = await this.usersService.findOne({ id: userId });
 
-    if (isNewFavorite) {
-      user.favorites = [...(user.favorites || []), article];
-      article.favoriteCount++;
-      await Promise.all([
-        this.usersService.update(user.id, user),
-        this.articleRepository.save(article),
-      ]);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const existingFavorite = await this.favoritesService.findOne({
+      article,
+      user,
+    });
+
+    if (!existingFavorite) {
+      await this.favoritesService.create({ article, user });
+      article.favoritesCount++;
     }
 
     return article;
@@ -118,16 +221,17 @@ export class ArticlesService {
       throw new NotFoundException('User not found');
     }
 
-    const deleteIndex = user.favorites.findIndex(
-      (article) => article.id === article.id,
-    );
+    const favorite = await this.favoritesService.findOne({
+      user,
+      article,
+    });
 
-    if (deleteIndex >= 0) {
-      user.favorites.splice(deleteIndex, 1);
-      article.favoriteCount--;
-      await this.usersService.update(user.id, user);
-      await this.articleRepository.save(article);
+    if (!favorite) {
+      throw new NotFoundException('Favorite not found');
     }
+
+    article.favoritesCount--;
+    await this.favoritesService.remove(favorite);
 
     return article;
   }

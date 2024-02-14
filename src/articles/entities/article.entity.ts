@@ -1,11 +1,13 @@
 import { Comment } from 'src/comments/entities/comment.entity';
-import { EntityHelper } from 'src/common/entity-helper';
+import { Favorite } from 'src/favorites/entities/favorite.entity';
+import { Tag } from 'src/tags/entities/tag.entity';
 import { User } from 'src/users/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -13,7 +15,7 @@ import {
 } from 'typeorm';
 
 @Entity()
-export class Article extends EntityHelper {
+export class Article {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -29,22 +31,24 @@ export class Article extends EntityHelper {
   @Column()
   body: string;
 
-  @Column('simple-array')
-  tagList: string[];
+  @ManyToMany(() => Tag, (tag) => tag.article, { cascade: true })
+  @JoinTable()
+  tags: Tag[];
+
+  @ManyToOne(() => User, (author) => author.articles)
+  author: User;
 
   @OneToMany(() => Comment, (comment) => comment.article, { eager: true })
-  @JoinColumn()
   comments: Comment[];
+
+  @OneToMany(() => Favorite, (favorite) => favorite.article)
+  favorites: Favorite[];
+
+  favoritesCount: number;
 
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
-
-  @ManyToOne(() => User, (author) => author.articles)
-  author: User;
-
-  @Column({ default: 0 })
-  favoriteCount: number;
 }

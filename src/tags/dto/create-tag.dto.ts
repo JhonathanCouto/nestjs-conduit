@@ -5,5 +5,5 @@ export class CreateTagDto {
   @ApiProperty({ example: 'tag' })
   @IsNotEmpty()
   @IsString()
-  tag: string;
+  name: string;
 }
