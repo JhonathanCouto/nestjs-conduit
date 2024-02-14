@@ -71,3 +71,5 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](LICENSE).
+
+[![Codeac](https://static.codeac.io/badges/2-753269723.svg "Codeac")](https://app.codeac.io/github/JhonathanCouto/nest-conduit)
